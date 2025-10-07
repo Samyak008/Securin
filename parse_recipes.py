@@ -39,8 +39,8 @@ def parse_and_store_recipes():
     for key, recipe in data.items():
         cursor.execute('''
             INSERT OR REPLACE INTO recipes 
-            (cuisine, title, rating, prep_time, cook_time, total_time, description, serves)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            (cuisine, title, rating, prep_time, cook_time, total_time, description, nutrients, serves)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             recipe.get('cuisine'),
             recipe.get('title'),
@@ -49,6 +49,7 @@ def parse_and_store_recipes():
             recipe.get('cook_time'),
             recipe.get('total_time'),
             recipe.get('description'),
+            json.dumps(recipe.get('nutrients')),
             recipe.get('serves')
         ))
 
