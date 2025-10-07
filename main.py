@@ -13,18 +13,16 @@ def get_db_connection():
 def get_recipes(
     page: int = Query(1, ge=1),
     per_page: int = Query(10, ge=1, le=100),
-    sort_by: str = Query('title'),
+    sort_by: str = Query('cuisine'),  # Changed default to 'cuisine' since it has no null values
     order: str = Query('asc')
 ):
     """
     Get all recipes with pagination and sorting
     """
     # Validate sort_by field to prevent SQL injection
-    valid_sort_fields = ['cuisine', 'title', 'rating', 'prep_time', 'cook_time', 'total_time']
+    valid_sort_fields = ['cuisine', 'title', 'rating', 'prep_time', 'cook_time', 'total_time', 'description', 'nutrients', 'serves']
     if sort_by not in valid_sort_fields:
-        sort_by = 'title'
-    
-    # Validate order
+        sort_by = 'cuisine'
     order = order.upper()
     if order not in ['ASC', 'DESC']:
         order = 'ASC'
@@ -32,14 +30,34 @@ def get_recipes(
     offset = (page - 1) * per_page
     
     conn = get_db_connection()
-    # Explicitly specify column names to ensure correct mapping
+
+    if sort_by in ['title', 'description', 'prep_time', 'cook_time', 'total_time', 'rating', 'serves', 'nutrients']:
+        order_clause = f'CASE WHEN {sort_by} IS NULL THEN 1 ELSE 0 END, {sort_by} {order}'
+    else:
+        order_clause = f'{sort_by} {order}'
+        
     recipes = conn.execute(
-        f'SELECT cuisine, title, rating, prep_time, cook_time, total_time, description, nutrients, serves FROM recipes ORDER BY {sort_by} {order} LIMIT ? OFFSET ?',
+        f'SELECT cuisine, title, rating, prep_time, cook_time, total_time, description, nutrients, serves FROM recipes ORDER BY {order_clause} LIMIT ? OFFSET ?',
         (per_page, offset)
     ).fetchall()
-    conn.close()
     
-    recipes_list = [dict(recipe) for recipe in recipes]
+    # Convert Row objects to dictionaries explicitly
+    recipes_list = []
+    for recipe in recipes:
+        recipe_dict = {
+            'cuisine': recipe['cuisine'],
+            'title': recipe['title'],
+            'rating': recipe['rating'],
+            'prep_time': recipe['prep_time'],
+            'cook_time': recipe['cook_time'],
+            'total_time': recipe['total_time'],
+            'description': recipe['description'],
+            'nutrients': recipe['nutrients'],
+            'serves': recipe['serves']
+        }
+        recipes_list.append(recipe_dict)
+    
+    conn.close()
     
     # Get total count for pagination info
     conn = get_db_connection()
